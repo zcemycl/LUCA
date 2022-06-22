@@ -40,3 +40,17 @@ jobs:
           pre-commit install
           pre-commit run
           pre-commit run --all-files
+  
+      # Test python scripts
+      - name: Test with pytest
+        run: |
+          pip install python-coveralls
+          python -m pytest --cov=./dfp --cov-report term-missing
+          pip install coveragepy-lcov
+          coveragepy-lcov --data_file_path .coverage --output_file_path lcov.info
+      # Coveralls
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: lcov.info
