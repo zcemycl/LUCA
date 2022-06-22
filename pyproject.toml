@@ -1,0 +1,33 @@
+[tool.black]
+line-length = 79
+include = '''
+/(
+    src
+  | tst
+)/
+'''
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.nox
+  | __pycache__
+  | \.pyc$
+  | \.ipynb$
+  | \.md$
+  | build
+  | .venv
+  | artifact
+  | install
+  | dist
+  | \.eggs
+)/
+'''
+
+[tool.isort]
+profile = "black"
+src_paths = [".","src", "tests"]
+skip=[".tox",".nox",".venv","artifact","install"]
+skip_glob=[".venv/*","artifact/*","install/*"]
+sections="FUTURE,STDLIB,SETUPTOOLS,TEST,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
+known_first_party = "src"
