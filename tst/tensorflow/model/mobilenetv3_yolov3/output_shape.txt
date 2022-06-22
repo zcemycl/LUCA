@@ -1,0 +1,263 @@
+input_1, 416, 416, 3
+rescaling, 416, 416, 3
+Conv, 208, 208, 16
+Conv / BatchNorm, 208, 208, 16
+tf.__operators__.add, 208, 208, 16
+re_lu, 208, 208, 16
+tf.math.multiply, 208, 208, 16
+multiply, 208, 208, 16
+expanded_conv / depthwise, 208, 208, 16
+expanded_conv / depthwise / BatchNorm, 208, 208, 16
+re_lu_1, 208, 208, 16
+expanded_conv / project, 208, 208, 16
+expanded_conv / project / BatchNorm, 208, 208, 16
+expanded_conv / Add, 208, 208, 16
+expanded_conv_1 / expand, 208, 208, 64
+expanded_conv_1 / expand / BatchNorm, 208, 208, 64
+re_lu_2, 208, 208, 64
+expanded_conv_1 / depthwise / pad, 209, 209, 64
+expanded_conv_1 / depthwise, 104, 104, 64
+expanded_conv_1 / depthwise / BatchNorm, 104, 104, 64
+re_lu_3, 104, 104, 64
+expanded_conv_1 / project, 104, 104, 24
+expanded_conv_1 / project / BatchNorm, 104, 104, 24
+expanded_conv_2 / expand, 104, 104, 72
+expanded_conv_2 / expand / BatchNorm, 104, 104, 72
+re_lu_4, 104, 104, 72
+expanded_conv_2 / depthwise, 104, 104, 72
+expanded_conv_2 / depthwise / BatchNorm, 104, 104, 72
+re_lu_5, 104, 104, 72
+expanded_conv_2 / project, 104, 104, 24
+expanded_conv_2 / project / BatchNorm, 104, 104, 24
+expanded_conv_2 / Add, 104, 104, 24
+expanded_conv_3 / expand, 104, 104, 72
+expanded_conv_3 / expand / BatchNorm, 104, 104, 72
+re_lu_6, 104, 104, 72
+expanded_conv_3 / depthwise / pad, 107, 107, 72
+expanded_conv_3 / depthwise, 52, 52, 72
+expanded_conv_3 / depthwise / BatchNorm, 52, 52, 72
+re_lu_7, 52, 52, 72
+expanded_conv_3 / squeeze_excite / AvgPool, 1, 1, 72
+expanded_conv_3 / squeeze_excite / Conv, 1, 1, 24
+expanded_conv_3 / squeeze_excite / Relu, 1, 1, 24
+expanded_conv_3 / squeeze_excite / Conv_1, 1, 1, 72
+tf.__operators__.add_1, 1, 1, 72
+re_lu_8, 1, 1, 72
+tf.math.multiply_1, 1, 1, 72
+expanded_conv_3 / squeeze_excite / Mul, 52, 52, 72
+expanded_conv_3 / project, 52, 52, 40
+expanded_conv_3 / project / BatchNorm, 52, 52, 40
+expanded_conv_4 / expand, 52, 52, 120
+expanded_conv_4 / expand / BatchNorm, 52, 52, 120
+re_lu_9, 52, 52, 120
+expanded_conv_4 / depthwise, 52, 52, 120
+expanded_conv_4 / depthwise / BatchNorm, 52, 52, 120
+re_lu_10, 52, 52, 120
+expanded_conv_4 / squeeze_excite / AvgPool, 1, 1, 120
+expanded_conv_4 / squeeze_excite / Conv, 1, 1, 32
+expanded_conv_4 / squeeze_excite / Relu, 1, 1, 32
+expanded_conv_4 / squeeze_excite / Conv_1, 1, 1, 120
+tf.__operators__.add_2, 1, 1, 120
+re_lu_11, 1, 1, 120
+tf.math.multiply_2, 1, 1, 120
+expanded_conv_4 / squeeze_excite / Mul, 52, 52, 120
+expanded_conv_4 / project, 52, 52, 40
+expanded_conv_4 / project / BatchNorm, 52, 52, 40
+expanded_conv_4 / Add, 52, 52, 40
+expanded_conv_5 / expand, 52, 52, 120
+expanded_conv_5 / expand / BatchNorm, 52, 52, 120
+re_lu_12, 52, 52, 120
+expanded_conv_5 / depthwise, 52, 52, 120
+expanded_conv_5 / depthwise / BatchNorm, 52, 52, 120
+re_lu_13, 52, 52, 120
+expanded_conv_5 / squeeze_excite / AvgPool, 1, 1, 120
+expanded_conv_5 / squeeze_excite / Conv, 1, 1, 32
+expanded_conv_5 / squeeze_excite / Relu, 1, 1, 32
+expanded_conv_5 / squeeze_excite / Conv_1, 1, 1, 120
+tf.__operators__.add_3, 1, 1, 120
+re_lu_14, 1, 1, 120
+tf.math.multiply_3, 1, 1, 120
+expanded_conv_5 / squeeze_excite / Mul, 52, 52, 120
+expanded_conv_5 / project, 52, 52, 40
+expanded_conv_5 / project / BatchNorm, 52, 52, 40
+expanded_conv_5 / Add, 52, 52, 40
+expanded_conv_6 / expand, 52, 52, 240
+expanded_conv_6 / expand / BatchNorm, 52, 52, 240
+tf.__operators__.add_4, 52, 52, 240
+re_lu_15, 52, 52, 240
+tf.math.multiply_4, 52, 52, 240
+multiply_1, 52, 52, 240
+expanded_conv_6 / depthwise / pad, 53, 53, 240
+expanded_conv_6 / depthwise, 26, 26, 240
+expanded_conv_6 / depthwise / BatchNorm, 26, 26, 240
+tf.__operators__.add_5, 26, 26, 240
+re_lu_16, 26, 26, 240
+tf.math.multiply_5, 26, 26, 240
+multiply_2, 26, 26, 240
+expanded_conv_6 / project, 26, 26, 80
+expanded_conv_6 / project / BatchNorm, 26, 26, 80
+expanded_conv_7 / expand, 26, 26, 200
+expanded_conv_7 / expand / BatchNorm, 26, 26, 200
+tf.__operators__.add_6, 26, 26, 200
+re_lu_17, 26, 26, 200
+tf.math.multiply_6, 26, 26, 200
+multiply_3, 26, 26, 200
+expanded_conv_7 / depthwise, 26, 26, 200
+expanded_conv_7 / depthwise / BatchNorm, 26, 26, 200
+tf.__operators__.add_7, 26, 26, 200
+re_lu_18, 26, 26, 200
+tf.math.multiply_7, 26, 26, 200
+multiply_4, 26, 26, 200
+expanded_conv_7 / project, 26, 26, 80
+expanded_conv_7 / project / BatchNorm, 26, 26, 80
+expanded_conv_7 / Add, 26, 26, 80
+expanded_conv_8 / expand, 26, 26, 184
+expanded_conv_8 / expand / BatchNorm, 26, 26, 184
+tf.__operators__.add_8, 26, 26, 184
+re_lu_19, 26, 26, 184
+tf.math.multiply_8, 26, 26, 184
+multiply_5, 26, 26, 184
+expanded_conv_8 / depthwise, 26, 26, 184
+expanded_conv_8 / depthwise / BatchNorm, 26, 26, 184
+tf.__operators__.add_9, 26, 26, 184
+re_lu_20, 26, 26, 184
+tf.math.multiply_9, 26, 26, 184
+multiply_6, 26, 26, 184
+expanded_conv_8 / project, 26, 26, 80
+expanded_conv_8 / project / BatchNorm, 26, 26, 80
+expanded_conv_8 / Add, 26, 26, 80
+expanded_conv_9 / expand, 26, 26, 184
+expanded_conv_9 / expand / BatchNorm, 26, 26, 184
+tf.__operators__.add_10, 26, 26, 184
+re_lu_21, 26, 26, 184
+tf.math.multiply_10, 26, 26, 184
+multiply_7, 26, 26, 184
+expanded_conv_9 / depthwise, 26, 26, 184
+expanded_conv_9 / depthwise / BatchNorm, 26, 26, 184
+tf.__operators__.add_11, 26, 26, 184
+re_lu_22, 26, 26, 184
+tf.math.multiply_11, 26, 26, 184
+multiply_8, 26, 26, 184
+expanded_conv_9 / project, 26, 26, 80
+expanded_conv_9 / project / BatchNorm, 26, 26, 80
+expanded_conv_9 / Add, 26, 26, 80
+expanded_conv_10 / expand, 26, 26, 480
+expanded_conv_10 / expand / BatchNorm, 26, 26, 480
+tf.__operators__.add_12, 26, 26, 480
+re_lu_23, 26, 26, 480
+tf.math.multiply_12, 26, 26, 480
+multiply_9, 26, 26, 480
+expanded_conv_10 / depthwise, 26, 26, 480
+expanded_conv_10 / depthwise / BatchNorm, 26, 26, 480
+tf.__operators__.add_13, 26, 26, 480
+re_lu_24, 26, 26, 480
+tf.math.multiply_13, 26, 26, 480
+multiply_10, 26, 26, 480
+expanded_conv_10 / squeeze_excite / AvgPool, 1, 1, 480
+expanded_conv_10 / squeeze_excite / Conv, 1, 1, 120
+expanded_conv_10 / squeeze_excite / Relu, 1, 1, 120
+expanded_conv_10 / squeeze_excite / Conv_1, 1, 1, 480
+tf.__operators__.add_14, 1, 1, 480
+re_lu_25, 1, 1, 480
+tf.math.multiply_14, 1, 1, 480
+expanded_conv_10 / squeeze_excite / Mul, 26, 26, 480
+expanded_conv_10 / project, 26, 26, 112
+expanded_conv_10 / project / BatchNorm, 26, 26, 112
+expanded_conv_11 / expand, 26, 26, 672
+expanded_conv_11 / expand / BatchNorm, 26, 26, 672
+tf.__operators__.add_15, 26, 26, 672
+re_lu_26, 26, 26, 672
+tf.math.multiply_15, 26, 26, 672
+multiply_11, 26, 26, 672
+expanded_conv_11 / depthwise, 26, 26, 672
+expanded_conv_11 / depthwise / BatchNorm, 26, 26, 672
+tf.__operators__.add_16, 26, 26, 672
+re_lu_27, 26, 26, 672
+tf.math.multiply_16, 26, 26, 672
+multiply_12, 26, 26, 672
+expanded_conv_11 / squeeze_excite / AvgPool, 1, 1, 672
+expanded_conv_11 / squeeze_excite / Conv, 1, 1, 168
+expanded_conv_11 / squeeze_excite / Relu, 1, 1, 168
+expanded_conv_11 / squeeze_excite / Conv_1, 1, 1, 672
+tf.__operators__.add_17, 1, 1, 672
+re_lu_28, 1, 1, 672
+tf.math.multiply_17, 1, 1, 672
+expanded_conv_11 / squeeze_excite / Mul, 26, 26, 672
+expanded_conv_11 / project, 26, 26, 112
+expanded_conv_11 / project / BatchNorm, 26, 26, 112
+expanded_conv_11 / Add, 26, 26, 112
+expanded_conv_12 / expand, 26, 26, 672
+expanded_conv_12 / expand / BatchNorm, 26, 26, 672
+tf.__operators__.add_18, 26, 26, 672
+re_lu_29, 26, 26, 672
+tf.math.multiply_18, 26, 26, 672
+multiply_13, 26, 26, 672
+expanded_conv_12 / depthwise / pad, 29, 29, 672
+expanded_conv_12 / depthwise, 13, 13, 672
+expanded_conv_12 / depthwise / BatchNorm, 13, 13, 672
+tf.__operators__.add_19, 13, 13, 672
+re_lu_30, 13, 13, 672
+tf.math.multiply_19, 13, 13, 672
+multiply_14, 13, 13, 672
+expanded_conv_12 / squeeze_excite / AvgPool, 1, 1, 672
+expanded_conv_12 / squeeze_excite / Conv, 1, 1, 168
+expanded_conv_12 / squeeze_excite / Relu, 1, 1, 168
+expanded_conv_12 / squeeze_excite / Conv_1, 1, 1, 672
+tf.__operators__.add_20, 1, 1, 672
+re_lu_31, 1, 1, 672
+tf.math.multiply_20, 1, 1, 672
+expanded_conv_12 / squeeze_excite / Mul, 13, 13, 672
+expanded_conv_12 / project, 13, 13, 160
+expanded_conv_12 / project / BatchNorm, 13, 13, 160
+expanded_conv_13 / expand, 13, 13, 960
+expanded_conv_13 / expand / BatchNorm, 13, 13, 960
+tf.__operators__.add_21, 13, 13, 960
+re_lu_32, 13, 13, 960
+tf.math.multiply_21, 13, 13, 960
+multiply_15, 13, 13, 960
+expanded_conv_13 / depthwise, 13, 13, 960
+expanded_conv_13 / depthwise / BatchNorm, 13, 13, 960
+tf.__operators__.add_22, 13, 13, 960
+re_lu_33, 13, 13, 960
+tf.math.multiply_22, 13, 13, 960
+multiply_16, 13, 13, 960
+expanded_conv_13 / squeeze_excite / AvgPool, 1, 1, 960
+expanded_conv_13 / squeeze_excite / Conv, 1, 1, 240
+expanded_conv_13 / squeeze_excite / Relu, 1, 1, 240
+expanded_conv_13 / squeeze_excite / Conv_1, 1, 1, 960
+tf.__operators__.add_23, 1, 1, 960
+re_lu_34, 1, 1, 960
+tf.math.multiply_23, 1, 1, 960
+expanded_conv_13 / squeeze_excite / Mul, 13, 13, 960
+expanded_conv_13 / project, 13, 13, 160
+expanded_conv_13 / project / BatchNorm, 13, 13, 160
+expanded_conv_13 / Add, 13, 13, 160
+expanded_conv_14 / expand, 13, 13, 960
+expanded_conv_14 / expand / BatchNorm, 13, 13, 960
+tf.__operators__.add_24, 13, 13, 960
+re_lu_35, 13, 13, 960
+tf.math.multiply_24, 13, 13, 960
+multiply_17, 13, 13, 960
+expanded_conv_14 / depthwise, 13, 13, 960
+expanded_conv_14 / depthwise / BatchNorm, 13, 13, 960
+tf.__operators__.add_25, 13, 13, 960
+re_lu_36, 13, 13, 960
+tf.math.multiply_25, 13, 13, 960
+multiply_18, 13, 13, 960
+expanded_conv_14 / squeeze_excite / AvgPool, 1, 1, 960
+expanded_conv_14 / squeeze_excite / Conv, 1, 1, 240
+expanded_conv_14 / squeeze_excite / Relu, 1, 1, 240
+expanded_conv_14 / squeeze_excite / Conv_1, 1, 1, 960
+tf.__operators__.add_26, 1, 1, 960
+re_lu_37, 1, 1, 960
+tf.math.multiply_26, 1, 1, 960
+expanded_conv_14 / squeeze_excite / Mul, 13, 13, 960
+expanded_conv_14 / project, 13, 13, 160
+expanded_conv_14 / project / BatchNorm, 13, 13, 160
+expanded_conv_14 / Add, 13, 13, 160
+Conv_1, 13, 13, 960
+Conv_1 / BatchNorm, 13, 13, 960
+tf.__operators__.add_27, 13, 13, 960
+re_lu_38, 13, 13, 960
+tf.math.multiply_27, 13, 13, 960
+multiply_19, 13, 13, 960
