@@ -1,4 +1,4 @@
-# LUCA [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# LUCA [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![example workflow](https://github.com/zcemycl/LUCA/actions/workflows/python3-ubuntu.yml/badge.svg)
 LUCA is a collection of training procedures of DNN models. The repo is named after an evolutionary biology term -- Last Universal Common Ancestor, in an attempt to become the origin of any artificially intelligent creature -- Last Universal Common Artificial Intelligence.
 
 ## Set up Development Environment
