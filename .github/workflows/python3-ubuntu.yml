@@ -40,7 +40,7 @@ jobs:
           pre-commit install
           pre-commit run
           pre-commit run --all-files
-  
+
       # Test python scripts
       - name: Test with pytest
         run: |
