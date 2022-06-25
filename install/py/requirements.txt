@@ -16,3 +16,4 @@ tensorflow-model-optimization==0.7.2
 protobuf==3.20.*
 psutil==5.9.1
 tf-nightly-gpu
+nvidia-ml-py3==7.352.0
