@@ -21,3 +21,4 @@ pytest-flask
 Flask
 tf-nightly
 psutil
+nvidia-ml-py3
