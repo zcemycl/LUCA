@@ -31,7 +31,6 @@ class MobileNetV3_YoloV3(Network_Bbox):
             weights=weights,
         )
 
-    @ramit_timeit
     def Network(self) -> tf.keras.Model:
         inp = tf.keras.layers.Input([416, 416, 3])
         backbone = self.Backbone(inp)
