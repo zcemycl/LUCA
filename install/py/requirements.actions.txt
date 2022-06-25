@@ -20,3 +20,4 @@ pytest-mock
 pytest-flask
 Flask
 tf-nightly
+psutil
