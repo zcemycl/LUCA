@@ -1,4 +1,6 @@
 import argparse
+import sys
+from typing import List
 
 import src.tensorflow.model.mobilenetv3_yolov3._paths as _paths
 import tensorflow as tf
@@ -40,5 +42,28 @@ class MobileNetV3_YoloV3(Network_Bbox):
         return tf.keras.Model(inputs=inp, outputs=y)
 
 
+def parse_args(args: List[str]) -> argparse.Namespace:
+    p = argparse.ArgumentParser()
+    p.add_argument("--num_classes", type=int, default=20)
+    p.add_argument(
+        "--anchors",
+        type=str,
+        default="""\
+10,13,16,30,33,23,\
+30,61,62,45,59,119,\
+116,90,156,198,373,326""",
+    )
+    p.add_argument("--debug_model", action="store_true")
+    return p.parse_args(args)
+
+
+def main(args: argparse.Namespace):
+    net = MobileNetV3_YoloV3(args)
+    model = net.Network()
+    x = tf.random.normal([1, 416, 416, 3])
+    y = model(x)
+    print(y.shape)
+
+
 if __name__ == "__main__":
-    pass
+    main(parse_args(sys.argv[1:]))
