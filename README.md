@@ -14,3 +14,7 @@ pip install -r install/py/requirements.dev.txt
 ```
 pre-commit install
 ```
+3. Export PATH.
+```
+export PYTHONPATH=$PWD:$PYTHONPATH
+```
