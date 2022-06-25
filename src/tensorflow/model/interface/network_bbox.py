@@ -21,5 +21,5 @@ class Network_Bbox:
         raise NotImplementedError
 
     @abstractmethod
-    def Network(self, config: argparse.Namespace) -> tf.keras.Model:
+    def Network(self) -> tf.keras.Model:
         raise NotImplementedError

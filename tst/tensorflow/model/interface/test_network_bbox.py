@@ -18,4 +18,4 @@ def test_network_NotImplementedError():
     args = argparse.Namespace(a=1, b=2)
     interfaceNet = Network_Bbox(args)
     with pytest.raises(NotImplementedError) as _:
-        interfaceNet.Network(args)
+        interfaceNet.Network()
