@@ -30,12 +30,15 @@ class MobileNetV3_YoloV3(Network_Bbox):
         )
 
     @ramit_timeit
-    def Network(self, config: argparse.Namespace) -> tf.keras.Model:
-        pass
+    def Network(self) -> tf.keras.Model:
+        inp = tf.keras.layers.Input([416, 416, 3])
+        backbone = self.Backbone(inp)
+        for layer in backbone.layers:
+            layer.trainable = False
+        y = backbone.output
+
+        return tf.keras.Model(inputs=inp, outputs=y)
 
 
 if __name__ == "__main__":
-    x = tf.keras.layers.Input([416, 416, 3])
-    args = argparse.Namespace(debug_model=True)
-    net = MobileNetV3_YoloV3(args)
-    backbone = net.Backbone(x)
+    pass
