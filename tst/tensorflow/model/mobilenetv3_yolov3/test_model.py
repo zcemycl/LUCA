@@ -1,7 +1,5 @@
 import argparse
-import io
 import os
-import sys
 from typing import Tuple
 
 import pytest
@@ -17,19 +15,14 @@ from src.tensorflow.model.mobilenetv3_yolov3.model import (
 @pytest.fixture
 def inp_net() -> Tuple[tf.Tensor, tf.keras.Sequential]:
     inp = tf.keras.layers.Input([416, 416, 3])
-    args = argparse.Namespace(debug_model=True)
+    args = argparse.Namespace()
     net = MobileNetV3_YoloV3(args)
     return inp, net
 
 
 def test_backbone(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
     inp, net = inp_net
-    capOut = io.StringIO()
-    sys.stdout = capOut
     backbone = net.Backbone(inp)
-    sys.stdout = sys.__stdout__
-    print(capOut.getvalue())
-    assert "[DEBUG] Func" in capOut.getvalue()
     layers = backbone.layers
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
     with open(TEST_DIR + "/output_shape.txt", "r") as f:
