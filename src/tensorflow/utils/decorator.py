@@ -19,7 +19,6 @@ def ramit_timeit(func: Callable) -> Callable:
             for i in range(d_Count):
                 handle = nvidia_smi.nvmlDeviceGetHandleByIndex(i)
                 info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
-                print("[INFO] ------", info.used)
                 svram += info.used
         sram = psutil.virtual_memory().used
 
