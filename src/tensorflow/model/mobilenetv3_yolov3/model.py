@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -9,13 +9,16 @@ import src.tensorflow.model.mobilenetv3_yolov3._paths as _paths
 import tensorflow as tf
 from src.tensorflow.model.interface.network_bbox import Network_Bbox
 from src.tensorflow.utils.decorator import ramit_timeit
-from tensorflow.keras.layers import (  # Concatenate,; Reshape,; UpSampling2D,
+from tensorflow.keras.layers import (
     BatchNormalization,
+    Concatenate,
     Conv2D,
     DepthwiseConv2D,
     Input,
     Lambda,
     ReLU,
+    Reshape,
+    UpSampling2D,
 )
 
 print(_paths)
@@ -32,12 +35,15 @@ class MobileNetV3_YoloV3(Network_Bbox):
         self.anchors = [float(x) for x in self.config.anchors.split(",")]
         self.anchors = np.array(self.anchors, np.float32).reshape(-1, 2)
         self.num_anchors = len(self.anchors)
-        self.anchor_mask = [int(x) for x in self.config.anchor_mask.split(",")]
-        self.anchor_mask = np.array(self.anchor_mask)
+        self.anchor_layer_ind = [
+            int(x) for x in self.config.anchor_mask.split(",")
+        ]
+        self.anchor_mask = np.array(self.anchor_layer_ind)
         self.anchor_mask = [
             np.where(self.anchor_mask == i)[0].tolist()
             for i in range(self.num_layers)
         ]
+        self.num_anchors_layers = [len(i) for i in self.anchor_mask]
 
     @ramit_timeit
     def Backbone(
@@ -54,7 +60,6 @@ class MobileNetV3_YoloV3(Network_Bbox):
             weights=weights,
         )
 
-    @ramit_timeit
     def SeparableConv2D(
         self,
         channels: int,
@@ -79,11 +84,13 @@ class MobileNetV3_YoloV3(Network_Bbox):
         )
         return res
 
+    @ramit_timeit
     def EmptyLayer(self, shape: List[int]) -> tf.keras.Sequential:
         return tf.keras.Sequential(
             [Lambda(lambda x: tf.zeros([tf.shape(x)[0], *shape]))]
         )
 
+    @ramit_timeit
     def PyramidLayer(self, id: int, channels: int) -> tf.keras.Sequential:
         res = tf.keras.Sequential(
             [
@@ -124,6 +131,67 @@ class MobileNetV3_YoloV3(Network_Bbox):
         )
         return res
 
+    @ramit_timeit
+    def PyramidLeak(
+        self, channels: int, num_anchors: int, dim: int
+    ) -> tf.keras.Sequential:
+        out_filters = num_anchors * (self.config.num_classes + 5)
+        res = tf.keras.Sequential()
+        res.add(
+            self.SeparableConv2D(
+                2 * channels, (3, 3), padding="same", use_bias=False
+            )
+        )
+        res.add(
+            Conv2D(out_filters, kernel_size=1, padding="same", use_bias=False)
+        )
+        res.add(Reshape((dim, dim, num_anchors, self.config.num_classes + 5)))
+        return res
+
+    @ramit_timeit
+    def GlueLayer(self, id: int, channels: int) -> tf.keras.Sequential:
+        res = tf.keras.Sequential(
+            [
+                Conv2D(
+                    channels,
+                    kernel_size=1,
+                    padding="same",
+                    use_bias=False,
+                    name=f"block_{id}_conv",
+                ),
+                BatchNormalization(momentum=0.9, name=f"block_{id}_BN"),
+                ReLU(6.0, name=f"block_{id}_relu6"),
+                UpSampling2D(2),
+            ]
+        )
+        return res
+
+    def _make_divisible(
+        self, v: int, divisor: int, min_value: Optional[int] = None
+    ) -> int:
+        if min_value is None:
+            min_value = divisor
+        new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+        if new_v < 0.9 * v:
+            new_v += divisor
+        return new_v
+
+    @ramit_timeit
+    def SkipConv2D(
+        self, kernel: int, alpha: int, channels: int
+    ) -> tf.keras.Sequential:
+        last_block_filters = self._make_divisible(channels * alpha, 8)
+        res = tf.keras.Sequential(
+            [
+                Conv2D(
+                    last_block_filters, kernel, padding="same", use_bias=False
+                ),
+                BatchNormalization(),
+                ReLU(6.0),
+            ]
+        )
+        return res
+
     def Network(self) -> tf.keras.Model:
         inp = Input([416, 416, 3])
         backbone = self.Backbone(inp)
@@ -137,11 +205,39 @@ class MobileNetV3_YoloV3(Network_Bbox):
         skipMid = backbone.get_layer(
             "expanded_conv_11/project/BatchNorm"
         ).output
-        y = backbone.output  # multiply_19
-        nullLay = self.EmptyLayer([13, 13, 0, 25])
-        y1 = nullLay(y)
+        x = backbone.output  # multiply_19
+        top = self.PyramidLayer(15, 512)
+        if self.num_anchors_layers[0] == 0:
+            topLeak = self.EmptyLayer([13, 13, 0, 5 + self.config.num_classes])
+        else:
+            topLeak = self.PyramidLeak(512, self.num_anchors_layers[0], 13)
+        glueTopMid = self.GlueLayer(18, 256)
+        mid = self.PyramidLayer(19, 256)
+        if self.num_anchors_layers[1] == 0:
+            midLeak = self.EmptyLayer([26, 26, 0, 5 + self.config.num_classes])
+        else:
+            midLeak = self.PyramidLeak(256, self.num_anchors_layers[1], 26)
+        skipConvMid = self.SkipConv2D((1, 1), self.config.alpha, 384)
+        glueMidBot = self.GlueLayer(22, 128)
+        bot = self.PyramidLayer(23, 128)
+        if self.num_anchors_layers[2] == 0:
+            botLeak = self.EmptyLayer([52, 52, 0, 5 + self.config.num_classes])
+        else:
+            botLeak = self.PyramidLeak(128, self.num_anchors_layers[2], 52)
+        skipConvBot = self.SkipConv2D((1, 1), self.config.alpha, 128)
 
-        return tf.keras.Model(inputs=inp, outputs=[skipBot, skipMid, y1, y])
+        x1 = top(x)
+        y1 = topLeak(x1)
+        x2 = glueTopMid(x1)
+        x2 = Concatenate()([x2, skipConvMid(skipMid)])
+        x2 = mid(x2)
+        y2 = midLeak(x2)
+        x3 = glueMidBot(x2)
+        x3 = Concatenate()([x3, skipConvBot(skipBot)])
+        x3 = bot(x3)
+        y3 = botLeak(x3)
+
+        return tf.keras.Model(inputs=inp, outputs=[y1, y2, y3])
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
@@ -157,6 +253,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
 116,90,156,198,373,326""",
     )
     p.add_argument("--debug_model", action="store_true")
+    p.add_argument("--alpha", type=int, default=1)
     return p.parse_args(args)
 
 
@@ -165,12 +262,7 @@ def main(args: argparse.Namespace):
     model = net.Network()
     x = tf.random.normal([1, 416, 416, 3])
     y = model(x)
-    y1 = net.PyramidLayer(15, 512)(y[-1])
-    print(y[-1].shape)
-    print(y1.shape)
-    print(net.anchors, net.num_anchors)
-    print(net.anchor_mask)
-    # pdb.set_trace()
+    return y
 
 
 if __name__ == "__main__":
