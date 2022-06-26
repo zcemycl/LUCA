@@ -1,4 +1,3 @@
-import argparse
 import os
 from typing import Tuple
 
@@ -15,7 +14,7 @@ from src.tensorflow.model.mobilenetv3_yolov3.model import (
 @pytest.fixture
 def inp_net() -> Tuple[tf.Tensor, tf.keras.Sequential]:
     inp = tf.keras.layers.Input([416, 416, 3])
-    args = argparse.Namespace()
+    args = parse_args([])
     net = MobileNetV3_YoloV3(args)
     return inp, net
 
@@ -41,9 +40,39 @@ def test_backbone(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
 def test_network(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
     _, net = inp_net
     model = net.Network()
-    x = tf.random.normal([1, 416, 416, 3])
+    x = tf.zeros([1, 416, 416, 3])
     y = model(x)
-    assert y.shape == (1, 13, 13, 960)
+    assert y[-1].shape == (1, 13, 13, 960)
+
+
+def test_separableConv2D(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
+    _, net = inp_net
+    x = tf.zeros([1, 13, 13, 960])
+    channels = 2
+    layer = net.SeparableConv2D(
+        channels, (3, 3), padding="same", use_bias=False
+    )
+    y = layer(x)
+    assert y.shape == (1, 13, 13, channels)
+
+
+def test_pyramidLayer(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
+    _, net = inp_net
+    batch, channels = 2, 4
+    x = tf.zeros([batch, 13, 13, 960])
+    layer = net.PyramidLayer(15, channels)
+    y = layer(x)
+    assert y.shape == (batch, 13, 13, channels)
+
+
+def test_emptyLayer(inp_net: Tuple[tf.Tensor, tf.keras.Sequential]):
+    _, net = inp_net
+    batch, channels = 2, 4
+    shape = [13, 13, 0, 25]
+    x = tf.zeros([batch, 13, 13, channels])
+    layer = net.EmptyLayer([*shape])
+    y = layer(x)
+    assert y.shape == (batch, *shape)
 
 
 def test_parse_args():
