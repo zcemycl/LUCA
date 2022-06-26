@@ -32,6 +32,8 @@ class MobileNetV3_YoloV3(Network_Bbox):
     def __init__(self, config: argparse.Namespace):
         super().__init__(config)
         self.num_layers = 3
+        self.dim = 416
+        self.input_shape = tf.TensorShape([self.dim, self.dim])
         self.anchors = [float(x) for x in self.config.anchors.split(",")]
         self.anchors = np.array(self.anchors, np.float32).reshape(-1, 2)
         self.num_anchors = len(self.anchors)
@@ -238,6 +240,43 @@ class MobileNetV3_YoloV3(Network_Bbox):
         y3 = botLeak(x3)
 
         return tf.keras.Model(inputs=inp, outputs=[y1, y2, y3])
+
+    @ramit_timeit
+    def head(
+        self, layer_id: int, feats: tf.Tensor, calc_loss: bool = False
+    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+        num_anchors = self.num_anchors_layers[layer_id]
+        if num_anchors == 0:
+            pass
+        anchors_tensor = tf.reshape(
+            tf.constant(self.anchors[self.anchor_mask[layer_id]]),
+            [1, 1, 1, num_anchors, 2],
+        )
+        grid_shape = tf.shape(feats)[1:3]
+        grid_y = tf.tile(
+            tf.reshape(tf.range(0, grid_shape[0]), [-1, 1, 1, 1]),
+            [1, grid_shape[1], 1, 1],
+        )
+        grid_x = tf.tile(
+            tf.reshape(tf.range(0, grid_shape[1]), [1, -1, 1, 1]),
+            [grid_shape[0], 1, 1, 1],
+        )
+        grid = tf.concat([grid_x, grid_y], -1)
+        grid = tf.concat(grid, feats.dtype)
+
+        box_xy = (tf.sigmoid(feats[..., :2]) + grid) / tf.cast(
+            grid_shape[..., ::-1], feats.dtype
+        )
+        box_wh = (
+            tf.exp(feats[..., 2:4])
+            * tf.cast(anchors_tensor, feats.dtype)
+            / tf.cast(self.input_shape[..., ::-1], feats.dtype)
+        )
+        box_confidence = tf.sigmoid(feats[..., 4:5])
+        if calc_loss:
+            return grid, box_xy, box_wh, box_confidence
+        box_class_probs = tf.sigmoid(feats[..., 5:])
+        return box_xy, box_wh, box_confidence, box_class_probs
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
