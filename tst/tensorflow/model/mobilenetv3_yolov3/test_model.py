@@ -249,3 +249,33 @@ def test_empty_head(
     assert box_xy.shape == (batch, *feat_shape, num_anchors, 2)
     assert box_wh.shape == (batch, *feat_shape, num_anchors, 2)
     assert box_confidence.shape == (batch, *feat_shape, num_anchors, 1)
+
+
+@pytest.mark.parametrize(
+    "layer_id,feat_shape",
+    [(0, [13, 13]), (1, [26, 26]), (2, [52, 52])],
+)
+def test_correct_boxes(
+    inp_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model],
+    layer_id: int,
+    feat_shape: List[int],
+):
+    _, netObj, _ = inp_net_model
+    batch = 1
+    # potential problem with more than 1 digit
+    num_anchors = netObj.config.anchor_mask.count(str(layer_id))
+    feats = tf.zeros(
+        [
+            batch,
+            *feat_shape,
+            num_anchors,
+            2,
+        ]
+    )
+    boxes = netObj.correct_boxes(feats, feats, netObj.input_shape, [416, 416])
+    assert boxes.shape == (
+        batch,
+        *feat_shape,
+        netObj.num_anchors_layers[layer_id],
+        4,
+    )

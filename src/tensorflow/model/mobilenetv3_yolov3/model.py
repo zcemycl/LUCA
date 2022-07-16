@@ -28,6 +28,25 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class MobileNetV3_YoloV3(Network_Bbox):
     config: argparse.Namespace
+    """
+    Backbone -> 2 Feature Maps -------------------------
+    |                                                  |
+    PyramidLayer                                       |
+    |          |                                       |
+    GlueLayer  PyramidLeak (1st Detection Layer)       |
+    |                                                  |
+    Concatenate <-Skip from Backbone -------------------
+    |                                                  |
+    PyramidLayer                                       |
+    |          |                                       |
+    GlueLayer  PyramidLeak (2nd Detection Layer)       |
+    |                                                  |
+    Concatenate <-Skip from Backbone -------------------
+    |
+    PyramidLayer
+               |
+               PyramidLeak (3rd Detection Layer)
+    """
 
     def __init__(self, config: argparse.Namespace):
         super().__init__(config)
@@ -262,7 +281,6 @@ class MobileNetV3_YoloV3(Network_Bbox):
 
         return tf.keras.Model(inputs=inp, outputs=[y1, y2, y3])
 
-    @ramit_timeit
     def head(
         self, layer_id: int, feats: tf.Tensor, calc_loss: bool = False
     ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
@@ -316,12 +334,58 @@ class MobileNetV3_YoloV3(Network_Bbox):
         box_class_probs = tf.sigmoid(feats[..., 5:])
         return box_xy, box_wh, box_confidence, box_class_probs
 
-    @ramit_timeit
-    def correct_boxes(self, box_xy: tf.Tensor, box_wh: tf.Tensor) -> tf.Tensor:
+    def correct_boxes(
+        self,
+        box_xy: tf.Tensor,
+        box_wh: tf.Tensor,
+        input_shape: tf.Tensor,
+        image_shape: List[int],
+    ) -> tf.Tensor:
         """
         Get corrected boxes
+        - Output shape: [batch, 13, 13, num_anchors, 4]
         """
-        pass
+        box_yx = box_xy[..., ::-1]
+        box_hw = box_wh[..., ::-1]
+        input_shape = tf.cast(input_shape, box_yx.dtype)
+        image_shape = tf.cast(image_shape, box_yx.dtype)
+        max_shape = tf.maximum(image_shape[0], image_shape[1])
+        ratio = image_shape / max_shape
+        boxed_shape = input_shape * ratio
+        offset = (input_shape - boxed_shape) / 2.0
+        scale = image_shape / boxed_shape
+        box_yx = (box_yx * input_shape - offset) * scale
+        box_hw *= input_shape * scale
+        box_mins = box_yx - (box_hw / 2.0)
+        box_maxes = box_yx + (box_hw / 2.0)
+        # ymin,xmin,ymax,xmax
+        boxes = tf.concat(
+            [
+                tf.clip_by_value(box_mins[..., 0:1], 0, image_shape[0]),
+                tf.clip_by_value(box_mins[..., 1:2], 0, image_shape[1]),
+                tf.clip_by_value(box_maxes[..., 0:1], 0, image_shape[0]),
+                tf.clip_by_value(box_maxes[..., 1:2], 0, image_shape[1]),
+            ],
+            axis=-1,
+        )
+        return boxes
+
+    def boxes_and_scores(
+        self, layer_id: int, feats: tf.Tensor
+    ) -> Tuple[tf.Tensor, tf.Tensor]:
+        """
+        Get Output from detection layer
+        """
+        box_xy, box_wh, box_confidence, box_class_probs = self.head(
+            layer_id, feats
+        )
+        boxes = self.correct_boxes(
+            box_xy, box_wh, self.input_shape, [self.dim, self.dim]
+        )
+        boxes = tf.reshape(boxes, [-1, 4])
+        box_scores = box_confidence * box_class_probs
+        box_scores = tf.reshape(box_scores, [-1, self.config.num_classes])
+        return boxes, box_scores
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
