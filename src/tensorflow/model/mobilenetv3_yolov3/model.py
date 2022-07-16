@@ -246,8 +246,13 @@ class MobileNetV3_YoloV3(Network_Bbox):
         self, layer_id: int, feats: tf.Tensor, calc_loss: bool = False
     ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         num_anchors = self.num_anchors_layers[layer_id]
-        if num_anchors == 0:
-            pass
+        if not calc_loss and num_anchors == 0:
+            return (
+                feats[..., :2],
+                feats[..., 2:4],
+                feats[..., 4:5],
+                feats[..., 5:],
+            )
         anchors_tensor = tf.reshape(
             tf.constant(self.anchors[self.anchor_mask[layer_id]]),
             [1, 1, 1, num_anchors, 2],
@@ -262,16 +267,19 @@ class MobileNetV3_YoloV3(Network_Bbox):
             [grid_shape[0], 1, 1, 1],
         )
         grid = tf.concat([grid_x, grid_y], -1)
-        grid = tf.concat(grid, feats.dtype)
-
+        grid = tf.cast(grid, feats.dtype)
+        if calc_loss and num_anchors == 0:
+            return grid, feats[..., :2], feats[..., 2:4], feats[..., 4:5]
         box_xy = (tf.sigmoid(feats[..., :2]) + grid) / tf.cast(
             grid_shape[..., ::-1], feats.dtype
         )
+
         box_wh = (
             tf.exp(feats[..., 2:4])
             * tf.cast(anchors_tensor, feats.dtype)
-            / tf.cast(self.input_shape[..., ::-1], feats.dtype)
+            / tf.cast(self.input_shape, feats.dtype)
         )
+
         box_confidence = tf.sigmoid(feats[..., 4:5])
         if calc_loss:
             return grid, box_xy, box_wh, box_confidence
@@ -282,7 +290,7 @@ class MobileNetV3_YoloV3(Network_Bbox):
 def parse_args(args: List[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--num_classes", type=int, default=20)
-    p.add_argument("--anchor_mask", type=str, default="2,2,2,1,1,1,0,0,0")
+    p.add_argument("--anchor_mask", type=str, default="2,2,2,1,1,1,1,0,0")
     p.add_argument(
         "--anchors",
         type=str,

@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import pytest
 
@@ -132,9 +132,9 @@ def test_main():
     y = main(args)
     assert len(y) == 3
     batch = 1
-    assert y[0].shape == (batch, 13, 13, 3, 25)
-    assert y[1].shape == (batch, 26, 26, 3, 25)
-    assert y[2].shape == (batch, 52, 52, 3, 25)
+    assert y[0].shape == (batch, 13, 13, args.anchor_mask.count("0"), 25)
+    assert y[1].shape == (batch, 26, 26, args.anchor_mask.count("1"), 25)
+    assert y[2].shape == (batch, 52, 52, args.anchor_mask.count("2"), 25)
 
 
 @pytest.mark.parametrize("channels,expected", [(384, 384), (128, 128)])
@@ -157,3 +157,95 @@ def test_skipConv2D(
     layer = net.SkipConv2D((1, 1), 1, 128)
     y = layer(x)
     assert y.shape == (batch, 52, 52, 128)
+
+
+@pytest.mark.parametrize(
+    "layer_id,feat_shape,calc_loss",
+    [
+        (0, [13, 13], False),
+        (1, [26, 26], False),
+        (1, [52, 52], False),
+        (0, [13, 13], True),
+        (0, [26, 26], True),
+        (0, [52, 52], True),
+    ],
+)
+def test_head(
+    inp_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model],
+    layer_id: int,
+    feat_shape: List[int],
+    calc_loss: bool,
+):
+    _, netObj, model = inp_net_model
+    batch = 1
+    # potential problem with more than 1 digit
+    num_anchors = netObj.config.anchor_mask.count(str(layer_id))
+    feats = tf.zeros(
+        [
+            batch,
+            *feat_shape,
+            num_anchors,
+            netObj.config.num_classes + 5,
+        ]
+    )
+    outputs = netObj.head(layer_id, feats, calc_loss)
+    if calc_loss:
+        grid, box_xy, box_wh, box_confidence = outputs
+        assert grid.shape == (*feat_shape, 1, 2)
+    else:
+        box_xy, box_wh, box_confidence, box_class_probs = outputs
+        assert box_class_probs.shape == (
+            batch,
+            *feat_shape,
+            num_anchors,
+            netObj.config.num_classes,
+        )
+    assert box_xy.shape == (batch, *feat_shape, num_anchors, 2)
+    assert box_wh.shape == (batch, *feat_shape, num_anchors, 2)
+    assert box_confidence.shape == (batch, *feat_shape, num_anchors, 1)
+
+
+@pytest.mark.parametrize(
+    "layer_id,feat_shape,calc_loss",
+    [
+        (0, [13, 13], False),
+        (1, [26, 26], False),
+        (1, [52, 52], False),
+        (0, [13, 13], True),
+        (0, [26, 26], True),
+        (0, [52, 52], True),
+    ],
+)
+def test_empty_head(
+    inp_empty_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model],
+    layer_id: int,
+    feat_shape: List[int],
+    calc_loss: bool,
+):
+    _, netObj, model = inp_empty_net_model
+    batch = 1
+    # potential problem with more than 1 digit
+    num_anchors = netObj.config.anchor_mask.count(str(layer_id))
+    feats = tf.zeros(
+        [
+            batch,
+            *feat_shape,
+            num_anchors,
+            netObj.config.num_classes + 5,
+        ]
+    )
+    outputs = netObj.head(layer_id, feats, calc_loss)
+    if calc_loss:
+        grid, box_xy, box_wh, box_confidence = outputs
+        assert grid.shape == (*feat_shape, 1, 2)
+    else:
+        box_xy, box_wh, box_confidence, box_class_probs = outputs
+        assert box_class_probs.shape == (
+            batch,
+            *feat_shape,
+            num_anchors,
+            netObj.config.num_classes,
+        )
+    assert box_xy.shape == (batch, *feat_shape, num_anchors, 2)
+    assert box_wh.shape == (batch, *feat_shape, num_anchors, 2)
+    assert box_confidence.shape == (batch, *feat_shape, num_anchors, 1)
