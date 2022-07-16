@@ -55,6 +55,12 @@ class MobileNetV3_YoloV3(Network_Bbox):
         include_top: bool = False,
         weights: str = "imagenet",
     ) -> tf.keras.Sequential:
+        """
+        Pretrained Backbone Network
+        - Replaceable with other imagenet network.
+        - Requires multiple scale feature maps (416->52->26->13).
+        - Different input shapes for different backbones.
+        """
         return tf.keras.applications.MobileNetV3Large(
             input_tensor=x,
             alpha=alpha,
@@ -88,6 +94,9 @@ class MobileNetV3_YoloV3(Network_Bbox):
 
     @ramit_timeit
     def EmptyLayer(self, shape: List[int]) -> tf.keras.Sequential:
+        """
+        Empty Layer is for detection layer with 0 anchors
+        """
         return tf.keras.Sequential(
             [Lambda(lambda x: tf.zeros([tf.shape(x)[0], *shape]))]
         )
@@ -137,6 +146,14 @@ class MobileNetV3_YoloV3(Network_Bbox):
     def PyramidLeak(
         self, channels: int, num_anchors: int, dim: int
     ) -> tf.keras.Sequential:
+        """
+        Detection Layer with output shapes
+        - (13,13,3,25)
+        - (26,26,3,25)
+        - (52,52,3,25)
+        - 3: number of anchors for that layer
+        - 25: xywh+objectness+20 class scores
+        """
         out_filters = num_anchors * (self.config.num_classes + 5)
         res = tf.keras.Sequential()
         res.add(
@@ -195,6 +212,10 @@ class MobileNetV3_YoloV3(Network_Bbox):
         return res
 
     def Network(self) -> tf.keras.Model:
+        """
+        Functional Yolo Model
+        - MobileNetV3 (416,416,3)->(13/26/52,13/26/52,3,25)
+        """
         inp = Input([416, 416, 3])
         backbone = self.Backbone(inp)
         for layer in backbone.layers:
@@ -245,6 +266,15 @@ class MobileNetV3_YoloV3(Network_Bbox):
     def head(
         self, layer_id: int, feats: tf.Tensor, calc_loss: bool = False
     ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+        """
+        Head of detection layer
+        - Returns uncorrected xywh, objectness, class confidences
+        - x'(x-center) = x+sigmoid(px)
+        - w'(box width) = exp(pw)*anchor_size_w
+        - confidence/objectness = sigmoid(?)
+        - With calc_loss == True
+        - - grid is metadata combining all detections in one variable
+        """
         num_anchors = self.num_anchors_layers[layer_id]
         if not calc_loss and num_anchors == 0:
             return (
@@ -285,6 +315,13 @@ class MobileNetV3_YoloV3(Network_Bbox):
             return grid, box_xy, box_wh, box_confidence
         box_class_probs = tf.sigmoid(feats[..., 5:])
         return box_xy, box_wh, box_confidence, box_class_probs
+
+    @ramit_timeit
+    def correct_boxes(self, box_xy: tf.Tensor, box_wh: tf.Tensor) -> tf.Tensor:
+        """
+        Get corrected boxes
+        """
+        pass
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
