@@ -387,11 +387,24 @@ class MobileNetV3_YoloV3(Network_Bbox):
         box_scores = tf.reshape(box_scores, [-1, self.config.num_classes])
         return boxes, box_scores
 
+    def eval(self):
+        pass
+
 
 def parse_args(args: List[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--num_classes", type=int, default=20)
-    p.add_argument("--anchor_mask", type=str, default="2,2,2,1,1,1,1,0,0")
+    p.add_argument(
+        "--num_classes",
+        type=int,
+        default=20,
+        help="Number of object classes",
+    )
+    p.add_argument(
+        "--anchor_mask",
+        type=str,
+        default="2,2,2,1,1,1,1,0,0",
+        help="Allocations of anchors for each detection layer",
+    )
     p.add_argument(
         "--anchors",
         type=str,
@@ -402,7 +415,12 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     )
     p.add_argument("--debug_model", action="store_true")
     p.add_argument("--alpha", type=int, default=1)
-    p.add_argument("--max_boxes", type=int, default=20)
+    p.add_argument(
+        "--max_boxes",
+        type=int,
+        default=20,
+        help="Maximum number of boxes for each class",
+    )
     p.add_argument("--score_threshold", type=float, default=0.6)
     p.add_argument("--iou_threshold", type=float, default=0.5)
     return p.parse_args(args)

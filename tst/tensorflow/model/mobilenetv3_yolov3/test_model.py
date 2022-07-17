@@ -279,3 +279,30 @@ def test_correct_boxes(
         netObj.num_anchors_layers[layer_id],
         4,
     )
+
+
+@pytest.mark.parametrize(
+    "layer_id,feat_shape",
+    [(0, [13, 13]), (1, [26, 26]), (2, [52, 52])],
+)
+def test_boxes_and_scores(
+    inp_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model],
+    layer_id: int,
+    feat_shape: List[int],
+):
+    _, netObj, _ = inp_net_model
+    batch = 1
+    # potential problem with more than 1 digit
+    num_anchors = netObj.config.anchor_mask.count(str(layer_id))
+    feats = tf.zeros(
+        [
+            batch,
+            *feat_shape,
+            num_anchors,
+            netObj.config.num_classes + 5,
+        ]
+    )
+    boxes, box_scores = netObj.boxes_and_scores(layer_id, feats)
+    num_predictions = feat_shape[0] * feat_shape[1] * num_anchors
+    assert boxes.shape == (num_predictions, 4)
+    assert box_scores.shape == (num_predictions, netObj.config.num_classes)
