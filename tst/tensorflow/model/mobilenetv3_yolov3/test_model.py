@@ -306,3 +306,40 @@ def test_boxes_and_scores(
     num_predictions = feat_shape[0] * feat_shape[1] * num_anchors
     assert boxes.shape == (num_predictions, 4)
     assert box_scores.shape == (num_predictions, netObj.config.num_classes)
+
+
+def test_group_boxes_and_scores(
+    inp_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model]
+):
+    _, netObj, _ = inp_net_model
+    batch = 1
+    num_features = 5 + netObj.config.num_classes
+    outputs = [
+        tf.zeros([batch, 13, 13, netObj.num_anchors_layers[0], num_features]),
+        tf.zeros([batch, 26, 26, netObj.num_anchors_layers[1], num_features]),
+        tf.zeros([batch, 52, 52, netObj.num_anchors_layers[2], num_features]),
+    ]
+    boxes, box_scores = netObj.group_boxes_and_scores(outputs)
+    num_proposals = (
+        13**2 * netObj.num_anchors_layers[0]
+        + 26**2 * netObj.num_anchors_layers[1]
+        + 52**2 * netObj.num_anchors_layers[2]
+    )
+    assert boxes.shape == (num_proposals, 4)
+    assert box_scores.shape == (num_proposals, netObj.config.num_classes)
+
+
+def test_filter_boxes(
+    inp_net_model: Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model]
+):
+    _, netObj, _ = inp_net_model
+    iou_threshold = netObj.config.iou_threshold
+    score_threshold = netObj.config.score_threshold
+    boxes = tf.zeros([25, 4])
+    box_scores = tf.zeros([25, 20])
+    boxes, scores, classes = netObj.filter_boxes(
+        boxes, box_scores, iou_threshold, score_threshold
+    )
+    assert boxes.shape == (0, 4)
+    assert scores.shape == (0,)
+    assert classes.shape == (0,)

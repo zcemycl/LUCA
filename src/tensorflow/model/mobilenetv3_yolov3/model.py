@@ -387,8 +387,55 @@ class MobileNetV3_YoloV3(Network_Bbox):
         box_scores = tf.reshape(box_scores, [-1, self.config.num_classes])
         return boxes, box_scores
 
-    def eval(self):
-        pass
+    def group_boxes_and_scores(
+        self,
+        yolo_outputs: List[tf.Tensor],
+        # image_shape: List[int]
+    ) -> Tuple[tf.Tensor, tf.Tensor]:
+        num_layers = len(yolo_outputs)
+        boxes, box_scores = [], []
+        for i in range(num_layers):
+            _boxes, _box_scores = self.boxes_and_scores(
+                i,
+                yolo_outputs[i],
+            )
+            boxes.append(_boxes)
+            box_scores.append(_box_scores)
+        boxes = tf.concat(boxes, axis=0)
+        box_scores = tf.concat(box_scores, axis=0)
+        return boxes, box_scores
+
+    def filter_boxes(
+        self,
+        boxes: tf.Tensor,
+        box_scores: tf.Tensor,
+        iou_threshold: float,
+        score_threshold: float,
+    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        """
+        filter boxes with non-maximum suppression
+        """
+        boxes_, scores_, classes_ = [], [], []
+        max_boxes_tensor = tf.constant(self.config.max_boxes, dtype=tf.int32)
+        for c in range(self.config.num_classes):
+            nms_index = tf.image.non_max_suppression(
+                boxes,
+                box_scores[:, c],
+                max_boxes_tensor,
+                iou_threshold=iou_threshold,
+                score_threshold=score_threshold,
+            )
+            class_boxes = tf.gather(boxes, nms_index)
+            class_box_scores = tf.gather(box_scores[:, c], nms_index)
+            classes = tf.ones_like(class_box_scores, tf.int32) * c
+            boxes_.append(class_boxes)
+            scores_.append(class_box_scores)
+            classes_.append(classes)
+        boxes_ = tf.concat(boxes_, axis=0)
+        scores_ = tf.concat(scores_, axis=0, name="scores")
+        classes_ = tf.concat(classes_, axis=0, name="classes")
+        boxes_ = tf.cast(boxes_, tf.int32, name="boxes")
+        return boxes_, scores_, classes_
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
