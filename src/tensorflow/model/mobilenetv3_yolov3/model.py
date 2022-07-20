@@ -478,6 +478,8 @@ def main(args: argparse.Namespace):
     model = net.Network()
     x = tf.random.normal([1, 416, 416, 3])
     y = model(x)
+    for output in y:
+        print(output.shape)
     return y
 
 
