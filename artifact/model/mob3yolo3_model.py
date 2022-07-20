@@ -36,11 +36,11 @@ def plotAnchors(
     plt.show()
 
 
-def visualisAnchors(args: argparse.Namespace):
+def visualizeAnchors(args: argparse.Namespace):
     netObj = MobileNetV3_YoloV3(args)
     print(args)
     model = netObj.Network()
-    x = tf.zeros([1, 416, 416, 3])
+    x = tf.random.normal([1, 416, 416, 3])
     y = model(x)
     layer_id = 2
     box_xy, box_wh, box_conf, box_class = netObj.head(layer_id, y[layer_id])
@@ -48,9 +48,10 @@ def visualisAnchors(args: argparse.Namespace):
         box_xy, box_wh, netObj.input_shape, [416, 416]
     )
     print(boxes.shape)
+    x = tf.zeros([1, 416, 416, 3])
     plotAnchors(x, boxes[:, :, :, 0, :], start=0, end=2704, skip=20)
 
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
-    visualisAnchors(args)
+    visualizeAnchors(args)

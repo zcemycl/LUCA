@@ -25,7 +25,7 @@ repos:
     hooks:
       - id: isort
         entry: isort
-        args: ["--profile", "black", --line-length=79]
+        args: [.]
         always_run: true
         verbose: true
 
@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: black
         entry: black
-        args: [--line-length=79]
+        args: [.]
         language: system
         always_run: true
         verbose: true
