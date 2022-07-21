@@ -6,7 +6,10 @@ import matplotlib.patches as ptc
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
-from src.tensorflow.model.mobilenetv3_yolov3.model import MobileNetV3_YoloV3
+from src.tensorflow.model.mobilenetv3_yolov3.model import (
+    MobileNetV3_YoloV3,
+    parse_args,
+)
 
 
 def plotAnchors(
@@ -53,44 +56,16 @@ def visualizeAnchors(args: argparse.Namespace):
     )
 
 
-def parse_args(args: List[str]) -> argparse.Namespace:
+def patch_parse_args(args: List[str]) -> argparse.Namespace:
+    ns = parse_args(args)
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "--num_classes",
-        type=int,
-        default=20,
-        help="Number of object classes",
-    )
-    p.add_argument(
-        "--anchor_mask",
-        type=str,
-        default="2,2,2,1,1,1,1,0,0",
-        help="Allocations of anchors for each detection layer",
-    )
-    p.add_argument(
-        "--anchors",
-        type=str,
-        default="""\
-10,13,16,30,33,23,\
-30,61,62,45,59,119,\
-116,90,156,198,373,326""",
-    )
-    p.add_argument("--debug_model", action="store_true")
-    p.add_argument("--alpha", type=int, default=1)
-    p.add_argument(
-        "--max_boxes",
-        type=int,
-        default=20,
-        help="Maximum number of boxes for each class",
-    )
-    p.add_argument("--score_threshold", type=float, default=0.6)
-    p.add_argument("--iou_threshold", type=float, default=0.5)
     p.add_argument("--layer_id", type=int, default=2)
     p.add_argument("--relative_anchor_id", type=int, default=0)
     p.add_argument("--skip", type=int, default=20)
-    return p.parse_args(args)
+    args_, _ = p.parse_known_args(args)
+    return argparse.Namespace(**vars(ns), **vars(args_))
 
 
 if __name__ == "__main__":
-    args = parse_args(sys.argv[1:])
+    args = patch_parse_args(sys.argv[1:])
     visualizeAnchors(args)

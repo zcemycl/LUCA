@@ -470,7 +470,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     )
     p.add_argument("--score_threshold", type=float, default=0.6)
     p.add_argument("--iou_threshold", type=float, default=0.5)
-    return p.parse_args(args)
+    args_, _ = p.parse_known_args(args)
+    return args_
 
 
 def main(args: argparse.Namespace):
