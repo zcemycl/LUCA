@@ -37,5 +37,5 @@ def test_extractXml(xml_root: Element):
 
 def test_main():
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-    args = parse_args([f"--vocroot {TEST_DIR}"])
+    args = parse_args(["--vocroot", TEST_DIR])
     main(args)
