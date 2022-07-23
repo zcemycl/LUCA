@@ -39,4 +39,5 @@ def test_extractXml(xml_root: Element):
 def test_main():
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
     args = parse_args(["--vocroot", str(TEST_DIR)])
-    main(args)
+    ds = main(args)
+    assert len(ds.label2id) == 2
