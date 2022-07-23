@@ -27,7 +27,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         help="""Specific filename in voc dataset\
 excluding extension like xml and jpg.""",
     )
-    args_, _ = p.parse_known_args()
+    args_, _ = p.parse_known_args(args)
     return args_
 
 

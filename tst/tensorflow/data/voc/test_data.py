@@ -18,6 +18,7 @@ getText = mypy_xmlTree.getText
 @pytest.fixture
 def xml_root() -> Element:
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+    print(TEST_DIR)
     root = path2XmlRoot(TEST_DIR + "/Annotations/2010_002107.xml")
     return root
 
@@ -37,5 +38,5 @@ def test_extractXml(xml_root: Element):
 
 def test_main():
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-    args = parse_args(["--vocroot", TEST_DIR])
+    args = parse_args(["--vocroot", str(TEST_DIR)])
     main(args)
