@@ -24,6 +24,8 @@ exclude = '''
   | dist
   | \.eggs
 )/
+| .*\.xml$
+| .*\.txt$
 '''
 
 [tool.isort]
