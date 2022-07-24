@@ -27,6 +27,7 @@ exclude = '''
 | .*\.xml$
 | .*\.txt$
 | .*\.tfrecord$
+| .*\.jpg$
 '''
 
 [tool.isort]
