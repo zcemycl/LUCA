@@ -1,4 +1,5 @@
 import argparse
+import pdb
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -7,7 +8,14 @@ import matplotlib.image as mpimg
 import matplotlib.patches as ptc
 import matplotlib.pyplot as plt
 
-from src.tensorflow.data.voc.data import extractXml, parse_args
+import tensorflow as tf
+from src.tensorflow.data.voc.data import (
+    decode_fn,
+    encode_fn,
+    extractXml,
+    parse_args,
+    voc_dataloader,
+)
 from src.tensorflow.utils.fixmypy import mypy_xmlTree
 
 find = mypy_xmlTree.find
@@ -43,3 +51,12 @@ def visualizeBbox(args: argparse.Namespace):
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
     visualizeBbox(args)
+    ds = voc_dataloader(args)
+    tf_ds = tf.data.TFRecordDataset([ds.config.tfrecord])
+    record = next(iter(tf_ds))
+    record = decode_fn(record)
+    img = tf.io.read_file(record["path"])
+    img = tf.io.decode_jpeg(img)
+    plt.imshow(img)
+    plt.show()
+    pdb.set_trace()

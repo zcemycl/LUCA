@@ -29,7 +29,20 @@ def parse_args(args: List[str]) -> argparse.Namespace:
 excluding extension like xml and jpg.""",
     )
     p.add_argument(
-        "--tfrecord", type=str, default="artifact/data/voc.tfrecord"
+        "--tfrecord",
+        type=str,
+        default="artifact/data/voc.tfrecord",
+        help="Where to save/load TFRecord.",
+    )
+    p.add_argument(
+        "--mode",
+        type=str,
+        default="none",
+        choices=["none", "convert"],
+        help="""dataloader mode ... \
+1. None: No mode. \
+2. Convert: Convert xml files to TFRecord. \
+""",
     )
     args_, _ = p.parse_known_args(args)
     return args_
@@ -176,7 +189,8 @@ class voc_dataloader:
 
 def main(args: argparse.Namespace):
     ds = voc_dataloader(args)
-    # ds.writeTFRecord()
+    if args.mode == "convert":
+        ds.writeTFRecord()
     return ds
 
 
