@@ -4,6 +4,8 @@ from xml.etree.ElementTree import Element
 import pytest
 
 from src.tensorflow.data.voc.data import (
+    decode_fn,
+    encode_fn,
     extractXml,
     main,
     parse_args,
@@ -36,8 +38,34 @@ def test_extractXml(xml_root: Element):
     assert isinstance(res["bbox"], list)
 
 
+def test_decode_encode():
+    TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+    args = parse_args(
+        ["--vocroot", TEST_DIR, "--tfrecord", TEST_DIR + "/voc.tfrecord"]
+    )
+    ds = main(args)
+    datum = ds.data[0]
+    bytesInfo = encode_fn(
+        datum["path"],
+        datum["xs"],
+        datum["ys"],
+        datum["ws"],
+        datum["hs"],
+        datum["ids"],
+    ).SerializeToString()
+    tmp = decode_fn(bytesInfo)
+    assert ds.data[0]["xs"] == tmp["image/x"].numpy().tolist()
+    assert ds.data[0]["ys"] == tmp["image/y"].numpy().tolist()
+    assert ds.data[0]["ws"] == tmp["image/w"].numpy().tolist()
+    assert ds.data[0]["hs"] == tmp["image/h"].numpy().tolist()
+    assert ds.data[0]["ids"] == tmp["labels"].numpy().tolist()
+    assert ds.data[0]["path"] == tmp["path"].numpy().decode("utf-8")
+
+
 def test_main():
     TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-    args = parse_args(["--vocroot", str(TEST_DIR)])
+    args = parse_args(
+        ["--vocroot", TEST_DIR, "--tfrecord", TEST_DIR + "/voc.tfrecord"]
+    )
     ds = main(args)
     assert len(ds.label2id) == 2

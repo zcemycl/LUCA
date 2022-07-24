@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Union
 from xml.etree.ElementTree import Element
 
+import tensorflow as tf
 from src.tensorflow.utils.fixmypy import mypy_xmlTree
 
 find = mypy_xmlTree.find
@@ -26,6 +27,9 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         default="2010_002107",
         help="""Specific filename in voc dataset\
 excluding extension like xml and jpg.""",
+    )
+    p.add_argument(
+        "--tfrecord", type=str, default="artifact/data/voc.tfrecord"
     )
     args_, _ = p.parse_known_args(args)
     return args_
@@ -56,6 +60,64 @@ def extractXml(root: Element) -> Dict[str, Any]:
     res["label"] = label
     res["bbox"] = bbox
     return res
+
+
+def encode_fn(
+    path: str,
+    x: List[int],
+    y: List[int],
+    w: List[int],
+    h: List[int],
+    label: List[int],
+) -> Any:
+    return tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                "path": tf.train.Feature(
+                    bytes_list=tf.train.BytesList(value=[bytes(path, "utf-8")])
+                ),
+                "image/x": tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=x)
+                ),
+                "image/y": tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=y)
+                ),
+                "image/w": tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=w)
+                ),
+                "image/h": tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=h)
+                ),
+                "labels": tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=label)
+                ),
+            }
+        )
+    )
+
+
+def decode_fn(record_bytes: tf.Tensor):
+    return tf.io.parse_single_example(
+        record_bytes,
+        {
+            "path": tf.io.FixedLenFeature([], dtype=tf.string),
+            "image/x": tf.io.FixedLenSequenceFeature(
+                [], dtype=tf.int64, allow_missing=True
+            ),
+            "image/y": tf.io.FixedLenSequenceFeature(
+                [], dtype=tf.int64, allow_missing=True
+            ),
+            "image/w": tf.io.FixedLenSequenceFeature(
+                [], dtype=tf.int64, allow_missing=True
+            ),
+            "image/h": tf.io.FixedLenSequenceFeature(
+                [], dtype=tf.int64, allow_missing=True
+            ),
+            "labels": tf.io.FixedLenSequenceFeature(
+                [], dtype=tf.int64, allow_missing=True
+            ),
+        },
+    )
 
 
 class voc_dataloader:
@@ -97,10 +159,24 @@ class voc_dataloader:
             data.append(info)
         return data
 
+    def writeTFRecord(self):
+        os.system(f"rm {self.config.tfrecord}")
+        with tf.io.TFRecordWriter(self.config.tfrecord) as f_write:
+            for datum in self.data:
+                record = encode_fn(
+                    datum["path"],
+                    datum["xs"],
+                    datum["ys"],
+                    datum["ws"],
+                    datum["hs"],
+                    datum["ids"],
+                ).SerializeToString()
+                f_write.write(record)
+
 
 def main(args: argparse.Namespace):
     ds = voc_dataloader(args)
-    print(ds.label2id, ds.id2label, ds.data[:2])
+    # ds.writeTFRecord()
     return ds
 
 
