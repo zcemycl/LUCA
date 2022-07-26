@@ -74,13 +74,16 @@ class TestLoadData(tf.test.TestCase):
         self.tfrecordPath = TEST_DIR + "/voc.tfrecord"
         self.tf_ds = tf.data.TFRecordDataset([self.tfrecordPath])
         self.record = next(iter(self.tf_ds))
+        self.record = decode_fn(self.record)
+        self.record["path"] = tf.constant(
+            TEST_DIR + "/JPEGImages/2010_002107.jpg"
+        )
 
     def testLoad(self):
-        record = decode_fn(self.record)
         for i in ["normal", "karrp", "karcp"]:
             with self.subTest("custom message", i=i):
                 img, xb, yb, wb, hb, labels = load.__wrapped__(
-                    record, resize_mode=i
+                    self.record, resize_mode=i
                 )
                 self.assertAllEqual(img.numpy().shape, (416, 416, 3))
 
