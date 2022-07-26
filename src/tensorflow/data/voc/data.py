@@ -3,12 +3,15 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 from xml.etree.ElementTree import Element
 
 import tensorflow as tf
 from src.tensorflow.utils.fixmypy import mypy_xmlTree
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.get_logger().setLevel("ERROR")
 find = mypy_xmlTree.find
 getText = mypy_xmlTree.getText
 
@@ -42,6 +45,16 @@ excluding extension like xml and jpg.""",
         help="""dataloader mode ... \
 1. None: No mode. \
 2. Convert: Convert xml files to TFRecord. \
+""",
+    )
+    p.add_argument(
+        "--resize_mode",
+        type=str,
+        default="karrp",
+        choices=["normal", "karrp", "karcp"],
+        help="""1. normal: not keep aspect ratio. \
+2. karrp: keep aspect ratio random pad. \
+3. karcp: keep aspect ratio center pad. \
 """,
     )
     args_, _ = p.parse_known_args(args)
@@ -131,6 +144,146 @@ def decode_fn(record_bytes: tf.Tensor):
             ),
         },
     )
+
+
+def random_flip_bbox(
+    img: tf.Tensor, target_dims: tf.Tensor, xb: tf.Tensor, yb: tf.Tensor
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    flipx = tf.random.uniform([], 0, 1)
+    flipy = tf.random.uniform([], 0, 1)
+    img, xb = tf.cond(
+        tf.less(flipx, 0.5),
+        lambda: (img, xb),
+        lambda: (tf.image.flip_left_right(img), target_dims[1] - xb),
+    )
+    img, yb = tf.cond(
+        tf.less(flipy, 0.5),
+        lambda: (img, yb),
+        lambda: (tf.image.flip_up_down(img), target_dims[0] - yb),
+    )
+    return img, xb, yb
+
+
+def random_image_colormap(img: tf.Tensor) -> tf.Tensor:
+    img = tf.image.random_hue(img, 0.5)
+    img = tf.image.random_saturation(img, 0.5, 1.5)
+    img = tf.image.random_brightness(img, 0.1)
+    # val = tf.random.uniform([], 0.8, 2)
+    # img = tf.image.adjust_gamma(img, val)
+    img = tf.image.random_contrast(img, 0.9, 1.1)
+    img = tf.image.random_jpeg_quality(img, 80, 100)
+    # add gaussian noise
+    img += tf.cast(
+        tf.random.uniform(shape=tf.shape(img), minval=0, maxval=0.05),
+        tf.float32,
+    )
+    return img
+
+
+def resize_bbox(
+    img: tf.Tensor,
+    xb: tf.Tensor,
+    yb: tf.Tensor,
+    wb: tf.Tensor,
+    hb: tf.Tensor,
+    target_dims: tf.Tensor,
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    dims = tf.cast(tf.shape(img), tf.float32)
+    rw = target_dims[1] / dims[1]
+    rh = target_dims[0] / dims[0]
+    img = tf.image.resize(img, [target_dims[0], target_dims[1]])
+    xb *= rw
+    yb *= rh
+    wb *= rw
+    hb *= rh
+    return img, xb, yb, wb, hb
+
+
+def resize_bbox_keep_aspect(
+    img: tf.Tensor,
+    xb: tf.Tensor,
+    yb: tf.Tensor,
+    wb: tf.Tensor,
+    hb: tf.Tensor,
+    target_dims: tf.Tensor,
+    center_pad: bool = False,
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    tar_aspect_ratio = target_dims[0] / target_dims[1]
+    dims = tf.shape(img)
+    h = tf.cast(dims[0], tf.float32)
+    w = tf.cast(dims[1], tf.float32)
+    aspect_ratio = h / w
+
+    aspect_cond = tf.less(aspect_ratio, tar_aspect_ratio)
+    r = tf.cond(
+        aspect_cond, lambda: target_dims[1] / w, lambda: target_dims[0] / h
+    )
+    tar_w = tf.cond(aspect_cond, lambda: target_dims[1], lambda: r * w)
+    tar_h = tf.cond(aspect_cond, lambda: r * h, lambda: target_dims[0])
+    img = tf.image.resize(img, [tar_h, tar_w])
+    wb *= r
+    hb *= r
+    xb *= r
+    yb *= r
+    dw = tf.cast(target_dims[1] - tf.floor(tar_w), tf.int64)
+    dh = tf.cast(target_dims[0] - tf.floor(tar_h), tf.int64)
+    if not center_pad:
+        dx, dy = tf.cond(
+            aspect_cond,
+            lambda: (
+                tf.constant(0, tf.int64),
+                tf.random.uniform([], 0, dh, tf.int64),
+            ),
+            lambda: (
+                tf.random.uniform([], 0, dw, tf.int64),
+                tf.constant(0, tf.int64),
+            ),
+        )
+    else:
+        dx = dw // 2
+        dy = dh // 2
+    xb, yb = tf.cond(
+        aspect_cond,
+        lambda: (xb, yb + tf.cast(dy, tf.float32)),
+        lambda: (xb + tf.cast(dx, tf.float32), yb),
+    )
+    img = tf.pad(
+        img, tf.convert_to_tensor([[dy, dh - dy], [dx, dw - dx], [0, 0]])
+    )
+    return img, xb, yb, wb, hb
+
+
+@tf.function
+def load(
+    record: Dict[str, Any],
+    target_dims: tf.Tensor = tf.constant([416, 416], tf.float32),
+    mode: str = "train",
+    resize_mode: str = "karcp",  # normal,karrp,karcp
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    img = tf.io.read_file(record["path"])
+    img = tf.io.decode_jpeg(img)
+    img = tf.cast(img, tf.float32) / 255.0
+    xb = tf.cast(record["image/x"], tf.float32)
+    yb = tf.cast(record["image/y"], tf.float32)
+    wb = tf.cast(record["image/w"], tf.float32)
+    hb = tf.cast(record["image/h"], tf.float32)
+    labels = record["labels"]
+
+    if mode == "train":
+        if resize_mode == "normal":
+            img, xb, yb, wb, hb = resize_bbox(img, xb, yb, wb, hb, target_dims)
+        elif resize_mode == "karrp":
+            img, xb, yb, wb, hb = resize_bbox_keep_aspect(
+                img, xb, yb, wb, hb, target_dims
+            )
+        elif resize_mode == "karcp":
+            img, xb, yb, wb, hb = resize_bbox_keep_aspect(
+                img, xb, yb, wb, hb, target_dims, center_pad=True
+            )
+        img, xb, yb = random_flip_bbox(img, target_dims, xb, yb)
+        img = random_image_colormap(img)
+
+    return img, xb, yb, wb, hb, labels
 
 
 class voc_dataloader:

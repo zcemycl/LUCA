@@ -10,6 +10,10 @@ from src.tensorflow.model.mobilenetv3_yolov3.model import (
     parse_args,
 )
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.get_logger().setLevel("ERROR")
+
 
 @pytest.fixture
 def inp_net_model() -> Tuple[tf.Tensor, tf.keras.Sequential, tf.keras.Model]:

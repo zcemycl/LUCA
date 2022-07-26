@@ -24,6 +24,7 @@ from tensorflow.keras.layers import (
 print(_paths)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.get_logger().setLevel("ERROR")
 
 
 class MobileNetV3_YoloV3(Network_Bbox):
