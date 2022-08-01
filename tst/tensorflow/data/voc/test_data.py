@@ -82,9 +82,7 @@ class TestLoadData(tf.test.TestCase):
     def testLoad(self):
         for i in ["normal", "karrp", "karcp"]:
             with self.subTest("custom message", i=i):
-                img, xb, yb, wb, hb, labels = load.__wrapped__(
-                    self.record, resize_mode=i
-                )
+                img, bbox = load.__wrapped__(self.record, resize_mode=i)
                 self.assertAllEqual(img.numpy().shape, (416, 416, 3))
 
 

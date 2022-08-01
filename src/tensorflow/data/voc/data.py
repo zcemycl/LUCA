@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 from xml.etree.ElementTree import Element
 
+import numpy as np
+
 import tensorflow as tf
+from src.tensorflow.loss.voc.loss import compute_giou
 from src.tensorflow.utils.fixmypy import mypy_xmlTree
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -56,6 +59,26 @@ excluding extension like xml and jpg.""",
 2. karrp: keep aspect ratio random pad. \
 3. karcp: keep aspect ratio center pad. \
 """,
+    )
+    p.add_argument(
+        "--num_classes",
+        type=int,
+        default=20,
+        help="Number of object classes",
+    )
+    p.add_argument(
+        "--anchor_mask",
+        type=str,
+        default="2,2,2,1,1,1,1,0,0",
+        help="Allocations of anchors for each detection layer",
+    )
+    p.add_argument(
+        "--anchors",
+        type=str,
+        default="""\
+10,13,16,30,33,23,\
+30,61,62,45,59,119,\
+116,90,156,198,373,326""",
     )
     args_, _ = p.parse_known_args(args)
     return args_
@@ -258,8 +281,8 @@ def load(
     record: Dict[str, Any],
     target_dims: tf.Tensor = tf.constant([416, 416], tf.float32),
     mode: str = "train",
-    resize_mode: str = "karcp",  # normal,karrp,karcp
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    resize_mode: str = "karrp",  # normal,karrp,karcp
+) -> Tuple[tf.Tensor, tf.Tensor]:
     img = tf.io.read_file(record["path"])
     img = tf.io.decode_jpeg(img)
     img = tf.cast(img, tf.float32) / 255.0
@@ -267,7 +290,7 @@ def load(
     yb = tf.cast(record["image/y"], tf.float32)
     wb = tf.cast(record["image/w"], tf.float32)
     hb = tf.cast(record["image/h"], tf.float32)
-    labels = record["labels"]
+    labels = tf.cast(record["labels"], tf.float32)
 
     if mode == "train":
         if resize_mode == "normal":
@@ -283,7 +306,11 @@ def load(
         img, xb, yb = random_flip_bbox(img, target_dims, xb, yb)
         img = random_image_colormap(img)
 
-    return img, xb, yb, wb, hb, labels
+    img = tf.clip_by_value(img, clip_value_min=0.0, clip_value_max=1.0)
+    bbox = tf.stack([xb, yb, wb, hb, labels])
+    # (number of boxes, 5)
+    bbox = tf.transpose(bbox, [1, 0])
+    return img, bbox
 
 
 class voc_dataloader:
@@ -295,6 +322,21 @@ class voc_dataloader:
         self.label2id: Dict[str, int] = {}
         self.id2label: Dict[int, str] = {}
         self.data = self.extractAllFiles()
+        self.num_layers = 3
+        self.dim = 416
+        self.input_shape = tf.TensorShape([self.dim, self.dim])
+        self.anchors = [float(x) for x in self.config.anchors.split(",")]
+        self.anchors = np.array(self.anchors, np.float32).reshape(-1, 2)
+        self.num_anchors = len(self.anchors)
+        self.anchor_layer_ind = [
+            int(x) for x in self.config.anchor_mask.split(",")
+        ]
+        self.anchor_mask = np.array(self.anchor_layer_ind)
+        self.anchor_mask = [
+            np.where(self.anchor_mask == i)[0].tolist()
+            for i in range(self.num_layers)
+        ]
+        self.num_anchors_layers = [len(i) for i in self.anchor_mask]
 
     def extractAllFiles(self) -> List[Dict[str, Any]]:
         data = []
@@ -338,6 +380,85 @@ class voc_dataloader:
                     datum["ids"],
                 ).SerializeToString()
                 f_write.write(record)
+
+    def preprocess_true_boxes(
+        self, true_boxes: tf.Tensor
+    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        """
+        Preprocess true boxes to training input format
+        --------------
+
+        --------------
+        """
+        num_layers = len(self.num_anchors_layers)
+        true_boxes = np.array(true_boxes, dtype="float32")
+        input_shape = np.array(self.input_shape, dtype="int32")
+        boxes_xy = true_boxes[..., 0:2]
+        boxes_wh = true_boxes[..., 2:4]
+        # because height width in shape
+        true_boxes[..., 0:2] = boxes_xy / input_shape[..., ::-1]
+        true_boxes[..., 2:4] = boxes_wh / input_shape[..., ::-1]
+
+        grid_shapes = [
+            np.round(input_shape / [32, 16, 8][layer_id]).astype(np.int32)
+            for layer_id in range(num_layers)
+        ]
+        y_true = [
+            np.zeros(
+                grid_shapes[layer_id][0],
+                grid_shapes[layer_id][1],
+                len(self.anchor_mask[layer_id]),
+                5 + self.config.num_classes,
+                dtype="float32",
+            )
+            for layer_id in range(num_layers)
+        ]
+
+        anchors = np.expand_dims(self.anchors, 0)
+        anchor_maxes = anchors / 2.0
+        anchor_mins = -anchor_maxes
+        valid_mask = boxes_wh[..., 0] > 0
+        wh = boxes_wh[valid_mask]
+        wh = np.expand_dims(wh, -2)
+        box_maxes = wh / 2.0
+        box_mins = -box_maxes
+        anchor_box = tf.stack(
+            [
+                anchor_mins[..., 1],
+                anchor_mins[..., 0],
+                anchor_maxes[..., 1],
+                anchor_maxes[..., 0],
+            ],
+            axis=-1,
+        )
+        bbox = tf.stack(
+            [
+                box_mins[..., 1],
+                box_mins[..., 0],
+                box_maxes[..., 1],
+                box_maxes[..., 0],
+            ],
+            axis=-1,
+        )
+        iou = compute_giou(anchor_box, bbox, mode="iou").numpy()
+        best_anchor = np.argmax(iou, axis=-1)
+
+        for t, n in enumerate(best_anchor):
+            for layer_id in range(num_layers):
+                if n in self.anchor_mask[layer_id]:
+                    i = np.floor(
+                        true_boxes[t, 0] * grid_shapes[layer_id][1]
+                    ).astype("int32")
+                    j = np.floor(
+                        true_boxes[t, 1] * grid_shapes[layer_id][0]
+                    ).astype("int32")
+                    k = self.anchor_mask[layer_id].index(n)
+                    c = true_boxes[t, 4].astype("int32")
+                    y_true[layer_id][j, i, k, 0:4] = true_boxes[t, 0:4]
+                    y_true[layer_id][j, i, k, 4] = 1
+                    y_true[layer_id][j, i, k, 5 + c] = 1
+
+        return y_true[0], y_true[1], y_true[2]
 
 
 def main(args: argparse.Namespace):
