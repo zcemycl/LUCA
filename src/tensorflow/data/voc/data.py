@@ -235,6 +235,7 @@ def resize_bbox_keep_aspect(
     target_dims: tf.Tensor,
     center_pad: bool = False,
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    zero = tf.constant(0, tf.int64)
     tar_aspect_ratio = target_dims[0] / target_dims[1]
     dims = tf.shape(img)
     h = tf.cast(dims[0], tf.float32)
@@ -255,16 +256,25 @@ def resize_bbox_keep_aspect(
     dw = tf.cast(target_dims[1] - tf.floor(tar_w), tf.int64)
     dh = tf.cast(target_dims[0] - tf.floor(tar_h), tf.int64)
     if not center_pad:
-        dx, dy = tf.cond(
+        cond_dx_eq0 = tf.equal(zero, dw)
+        cond_dy_eq0 = tf.equal(zero, dh)
+        dx = tf.cond(
             aspect_cond,
-            lambda: (
-                tf.constant(0, tf.int64),
-                tf.random.uniform([], 0, dh, tf.int64),
+            lambda: zero,
+            lambda: tf.cond(
+                cond_dx_eq0,
+                lambda: zero,
+                lambda: tf.random.uniform([], 0, dw, tf.int64),
             ),
-            lambda: (
-                tf.random.uniform([], 0, dw, tf.int64),
-                tf.constant(0, tf.int64),
+        )
+        dy = tf.cond(
+            aspect_cond,
+            lambda: tf.cond(
+                cond_dy_eq0,
+                lambda: zero,
+                lambda: tf.random.uniform([], 0, dh, tf.int64),
             ),
+            lambda: zero,
         )
     else:
         dx = dw // 2
@@ -484,14 +494,16 @@ class voc_dataloader:
         )
         return img, y1, y2, y3
 
-    def get_data(self, mode="train"):
+    def get_data(self, mode: str = "train", resize_mode: str = "karrp"):
         ds = tf.data.TFRecordDataset([self.config.tfrecord])
         ds = ds.map(
-            lambda x: self.loadGroundTruth(decode_fn(x), mode=mode),
+            lambda x: self.loadGroundTruth(
+                decode_fn(x), mode=mode, resize_mode=resize_mode
+            ),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
-        ds = ds.shuffle(self.config.buffer_size)
-        ds = ds.batch(self.config.batch_size)
+        # ds = ds.shuffle(self.config.buffer_size)
+        # ds = ds.batch(self.config.batch_size)
         return ds
 
 
