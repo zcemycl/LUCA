@@ -24,6 +24,7 @@ from tensorflow.keras.layers import (
 print(_paths)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.get_logger().setLevel("ERROR")
 
 
 class MobileNetV3_YoloV3(Network_Bbox):
@@ -470,7 +471,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     )
     p.add_argument("--score_threshold", type=float, default=0.6)
     p.add_argument("--iou_threshold", type=float, default=0.5)
-    return p.parse_args(args)
+    args_, _ = p.parse_known_args(args)
+    return args_
 
 
 def main(args: argparse.Namespace):
@@ -478,6 +480,8 @@ def main(args: argparse.Namespace):
     model = net.Network()
     x = tf.random.normal([1, 416, 416, 3])
     y = model(x)
+    for output in y:
+        print(output.shape)
     return y
 
 

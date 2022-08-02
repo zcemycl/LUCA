@@ -4,6 +4,7 @@ include = '''
 /(
     src
   | tst
+  | artifact
 )/
 '''
 exclude = '''
@@ -17,17 +18,23 @@ exclude = '''
   | \.md$
   | build
   | .venv
-  | artifact
+  | doc
+  | log
   | install
   | dist
   | \.eggs
 )/
+| .*\.xml$
+| .*\.txt$
+| .*\.tfrecord$
+| .*\.jpg$
 '''
 
 [tool.isort]
 profile = "black"
-src_paths = [".","src", "tst"]
-skip=[".tox",".nox",".venv","artifact","install"]
-skip_glob=[".venv/*","artifact/*","install/*"]
-sections="FUTURE,STDLIB,SETUPTOOLS,TEST,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
+src_paths = [".","src", "tst", "artifact"]
+skip=[".tox",".nox",".venv","doc","install","log"]
+skip_glob=[".venv/*","doc/*","install/*","log/*"]
+line_length = 79
+sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 known_first_party = "src"
