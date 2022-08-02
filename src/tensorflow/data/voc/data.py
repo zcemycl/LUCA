@@ -405,10 +405,12 @@ class voc_dataloader:
         ]
         y_true = [
             np.zeros(
-                grid_shapes[layer_id][0],
-                grid_shapes[layer_id][1],
-                len(self.anchor_mask[layer_id]),
-                5 + self.config.num_classes,
+                (
+                    grid_shapes[layer_id][0],
+                    grid_shapes[layer_id][1],
+                    len(self.anchor_mask[layer_id]),
+                    5 + self.config.num_classes,
+                ),
                 dtype="float32",
             )
             for layer_id in range(num_layers)
@@ -442,7 +444,6 @@ class voc_dataloader:
         )
         iou = compute_giou(anchor_box, bbox, mode="iou").numpy()
         best_anchor = np.argmax(iou, axis=-1)
-
         for t, n in enumerate(best_anchor):
             for layer_id in range(num_layers):
                 if n in self.anchor_mask[layer_id]:

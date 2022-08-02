@@ -12,6 +12,7 @@ from src.tensorflow.data.voc.data import (
     main,
     parse_args,
     path2XmlRoot,
+    voc_dataloader,
 )
 from src.tensorflow.utils.fixmypy import mypy_xmlTree
 
@@ -78,12 +79,27 @@ class TestLoadData(tf.test.TestCase):
         self.record["path"] = tf.constant(
             TEST_DIR + "/JPEGImages/2010_002107.jpg"
         )
+        self.ds = voc_dataloader(parse_args([]))
 
     def testLoad(self):
         for i in ["normal", "karrp", "karcp"]:
             with self.subTest("custom message", i=i):
                 img, bbox = load.__wrapped__(self.record, resize_mode=i)
                 self.assertAllEqual(img.numpy().shape, (416, 416, 3))
+
+    def test_preprocess_true_boxes(self):
+        xy = tf.random.uniform([2, 2], 100, 200, tf.float32)
+        wh = tf.random.uniform([2, 2], 10, 20, tf.float32)
+        labels = tf.random.uniform([2, 1], 0, 10, tf.float32)
+        bbox = tf.concat([xy, wh, labels], axis=-1)
+        res = self.ds.preprocess_true_boxes(bbox)
+        feature_map_dims = [13, 26, 52]
+        for i in range(self.ds.num_layers):
+            dim = feature_map_dims[i]
+            with self.subTest("custom message", i=i):
+                self.assertAllEqual(
+                    res[i].shape, (dim, dim, self.ds.num_anchors_layers[i], 25)
+                )
 
 
 def test_main():
