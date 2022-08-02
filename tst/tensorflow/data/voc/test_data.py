@@ -96,6 +96,10 @@ class TestLoadData(tf.test.TestCase):
                 img, bbox = load.__wrapped__(self.record, resize_mode=i)
                 self.assertAllEqual(img.numpy().shape, (416, 416, 3))
 
+    # def testLoadGT(self):
+    #     img, y1, y2, y3 = self.ds.loadGroundTruth.__wrapped__(self.record)
+    #     self.assertAllEqual(img.numpy().shape, (416, 416, 3))
+
     def test_preprocess_true_boxes(self):
         xy = tf.random.uniform([2, 2], 100, 200, tf.float32)
         wh = tf.random.uniform([2, 2], 10, 20, tf.float32)

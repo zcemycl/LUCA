@@ -44,7 +44,7 @@ excluding extension like xml and jpg.""",
         "--mode",
         type=str,
         default="none",
-        choices=["none", "convert"],
+        choices=["none", "convert", "loader"],
         help="""dataloader mode ... \
 1. None: No mode. \
 2. Convert: Convert xml files to TFRecord. \
@@ -79,6 +79,10 @@ excluding extension like xml and jpg.""",
 10,13,16,30,33,23,\
 30,61,62,45,59,119,\
 116,90,156,198,373,326""",
+    )
+    p.add_argument("--batch_size", type=int, default=16, help="Batch size")
+    p.add_argument(
+        "--buffer_size", type=int, default=400, help="Shuffle buffer size"
     )
     args_, _ = p.parse_known_args(args)
     return args_
@@ -319,6 +323,7 @@ class voc_dataloader:
         self.pathann = Path(config.vocroot) / Path("Annotations")
         self.pathjpg = Path(config.vocroot) / Path("JPEGImages")
         self.xmlfiles = os.listdir(self.pathann)
+        self.length = len(self.xmlfiles)
         self.label2id: Dict[str, int] = {}
         self.id2label: Dict[int, str] = {}
         self.data = self.extractAllFiles()
@@ -461,11 +466,41 @@ class voc_dataloader:
 
         return y_true[0], y_true[1], y_true[2]
 
+    @tf.function
+    def loadGroundTruth(
+        self,
+        record: Dict[str, Any],
+        target_dims: tf.Tensor = tf.constant([416, 416], tf.float32),
+        mode: str = "train",
+        resize_mode: str = "karrp",  # normal,karrp,karcp
+    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+        img, bbox = load(
+            record, target_dims=target_dims, mode=mode, resize_mode=resize_mode
+        )
+        y1, y2, y3 = tf.py_function(
+            self.preprocess_true_boxes,
+            [bbox],
+            [tf.float32, tf.float32, tf.float32],
+        )
+        return img, y1, y2, y3
+
+    def get_data(self, mode="train"):
+        ds = tf.data.TFRecordDataset([self.config.tfrecord])
+        ds = ds.map(
+            lambda x: self.loadGroundTruth(decode_fn(x), mode=mode),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
+        ds = ds.shuffle(self.config.buffer_size)
+        ds = ds.batch(self.config.batch_size)
+        return ds
+
 
 def main(args: argparse.Namespace):
     ds = voc_dataloader(args)
     if args.mode == "convert":
         ds.writeTFRecord()
+    elif args.mode == "loader":
+        _ = ds.get_data()
     return ds
 
 
