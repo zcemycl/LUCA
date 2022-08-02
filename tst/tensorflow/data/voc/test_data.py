@@ -79,7 +79,16 @@ class TestLoadData(tf.test.TestCase):
         self.record["path"] = tf.constant(
             TEST_DIR + "/JPEGImages/2010_002107.jpg"
         )
-        self.ds = voc_dataloader(parse_args([]))
+        self.ds = voc_dataloader(
+            parse_args(
+                [
+                    "--vocroot",
+                    TEST_DIR,
+                    "--tfrecord",
+                    TEST_DIR + "/voc.tfrecord",
+                ]
+            )
+        )
 
     def testLoad(self):
         for i in ["normal", "karrp", "karcp"]:
